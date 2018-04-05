@@ -45,8 +45,8 @@ public class DnnModelBehavior : MonoBehaviour
                         {
                             UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                             {
-                                StatusBlock.text = $"Error loop: {ex.Message}";
-                                Debug.LogError(ex);
+                                //StatusBlock.text = $"Error loop: {ex.Message}";
+                                //Debug.LogError(ex);
                                 //Debug.LogError(videoFrame.Direct3DSurface == null ? "D3D null" : "D3D set");
                                 //if (videoFrame.Direct3DSurface != null)
                                 //{
