@@ -260,7 +260,7 @@ PlayerSettings:
   m_BuildTargetGraphicsAPIs: []
   m_BuildTargetVRSettings:
   - m_BuildTarget: Metro
-    m_Enabled: 1
+    m_Enabled: 0
     m_Devices:
     - WindowsMR
   m_BuildTargetEnableVuforiaSettings: []
@@ -564,11 +564,11 @@ PlayerSettings:
   m_MobileRenderingPath: 1
   metroPackageName: HoloVision18
   metroPackageVersion: 1.0.0.0
-  metroCertificatePath: 
+  metroCertificatePath: D:\Git\Private\WinMLExperiments\HoloVision18\Assets\WSATestCertificate.pfx
   metroCertificatePassword: 
-  metroCertificateSubject: 
-  metroCertificateIssuer: 
-  metroCertificateNotAfter: 0000000000000000
+  metroCertificateSubject: Schulte Software Development
+  metroCertificateIssuer: Schulte Software Development
+  metroCertificateNotAfter: 807e574223ebd401
   metroApplicationDescription: oVision18n18
   wsaImages: {}
   metroTileShortName: 

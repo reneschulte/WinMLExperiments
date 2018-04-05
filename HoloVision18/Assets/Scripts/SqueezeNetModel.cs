@@ -1,6 +1,4 @@
-﻿
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,19 +9,19 @@ using UnityEngine;
 using Windows.AI.MachineLearning.Preview;
 using Windows.Storage;
 using Windows.Media;
-using Windows.Graphics.Imaging;
-using Windows.Media.Capture;
-using Windows.Media.MediaProperties;
-using Windows.System.Threading;
-using System.Threading;
-using Windows.Media.Devices;
-using Windows.Devices.Enumeration;
 using System.Diagnostics;
-using Windows.Media.SpeechSynthesis;
 #endif // ENABLE_WINMD_SUPPORT
 
 public class SqueezeNetModel
 {
+    public class SqueezeNetResult
+    {
+        public string TopResultsFormatted = "No results just yet";
+        public string DominantResultLabel;
+        public float DominantResultProbability;
+        public long ElapsedMilliseconds;
+    }
+
     public const string ModelFileName = "SqueezeNet.onnx";
     public const string LabelsFileName = "Labels.json";
 
@@ -31,16 +29,13 @@ public class SqueezeNetModel
     private List<float> _outputVariableList = new List<float>();
 
 #if ENABLE_WINMD_SUPPORT
-
     private ImageVariableDescriptorPreview _inputImageDescription;
     private TensorVariableDescriptorPreview _outputTensorDescription;
     private LearningModelPreview _model = null;
 
-    private MediaCapture _captureManager;
-    private VideoEncodingProperties _videoProperties;
-    private ThreadPoolTimer _frameProcessingTimer;
-    private SemaphoreSlim _frameProcessingSemaphore = new SemaphoreSlim(1);
-    private SpeechSynthesizer _speechSynth;
+    public ImageVariableDescriptorPreview InputDescription => _inputImageDescription;
+    public TensorVariableDescriptorPreview OutputDescription => _outputTensorDescription;
+
 #endif // ENABLE_WINMD_SUPPORT
 
     public async Task LoadModelAsync(bool isGpu = false)
@@ -65,14 +60,14 @@ public class SqueezeNetModel
                 }
             }
 
-            // Load Model via Unity
-            // The WinML LearningModelPreview is 'not implemented' so we are using the trick to load via Unity Resource as txt file...
-            var modelResource = Resources.Load(ModelFileName) as TextAsset;
-            var modelBits = modelResource.bytes;
-
 #if ENABLE_WINMD_SUPPORT
+
+            // Load Model via Unity
+            // The WinML LearningModelPreview.LoadModelFromStreamAsync is 'not implemented' so we are using the trick to load via Unity Resource as txt file...
+            // Thanks Mike for the hint! https://mtaulty.com/2018/03/29/third-experiment-with-image-classification-on-windows-ml-from-uwp-on-hololens-in-unity/
+
             IStorageFile modelFile = null;
-            var fileName = "model.bin";
+            var fileName = "model.bytes";
 
             try
             {
@@ -83,11 +78,12 @@ public class SqueezeNetModel
             }
             if (modelFile == null)
             {
+                var modelResource = Resources.Load(ModelFileName) as TextAsset;
                 modelFile = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(fileName);
-                await FileIO.WriteBytesAsync(modelFile, modelBits);
-            }            
+                await FileIO.WriteBytesAsync(modelFile, modelResource.bytes);
+            }
 
-            // Init model
+            // Init model          
             _model = await LearningModelPreview.LoadModelFromStorageFileAsync(modelFile);
             _model.InferencingOptions.ReclaimMemoryAfterEvaluation = true;
             _model.InferencingOptions.PreferredDeviceKind = isGpu == true ? LearningModelDeviceKindPreview.LearningDeviceGpu : LearningModelDeviceKindPreview.LearningDeviceCpu;
@@ -108,9 +104,69 @@ public class SqueezeNetModel
         catch
         {
 #if ENABLE_WINMD_SUPPORT
-         _model = null;
+            _model = null;
 #endif
-         throw;
+            throw;
         }
     }
+
+#if ENABLE_WINMD_SUPPORT
+   public async Task<SqueezeNetResult> EvaluateVideoFrameAsync(VideoFrame inputFrame, int topResultsCount = 3)
+    {
+        // Create bindings for the input and output buffer
+        LearningModelBindingPreview binding = new LearningModelBindingPreview(_model as LearningModelPreview);
+
+        if (inputFrame == null || (inputFrame.Direct3DSurface == null && inputFrame.SoftwareBitmap == null))
+        {
+            // Sometimes on HL RS4 the D3D surface returned is null, so simply skip those frames
+            return new SqueezeNetResult
+            {
+                TopResultsFormatted = "No input frame",
+                DominantResultLabel = "No input frame",
+                DominantResultProbability = 0,
+                ElapsedMilliseconds = 0
+            };
+        }
+        binding.Bind(_inputImageDescription.Name, inputFrame);
+        binding.Bind(_outputTensorDescription.Name, _outputVariableList);
+
+        // Process the frame with the model
+        var stopwatch = Stopwatch.StartNew();
+        LearningModelEvaluationResultPreview results = await _model.EvaluateAsync(binding, "test");
+        stopwatch.Stop();
+        List<float> resultProbabilities = results.Outputs[_outputTensorDescription.Name] as List<float>;
+
+        // Find the result of the evaluation in the bound output (the top classes detected with the max confidence)
+        var topProbabilities = new float[topResultsCount];
+        var topProbabilityLabelIndexes = new int[topResultsCount];
+        for (int i = 0; i < resultProbabilities.Count(); i++)
+        {
+            for (int j = 0; j < topResultsCount; j++)
+            {
+                if (resultProbabilities[i] > topProbabilities[j])
+                {
+                    topProbabilityLabelIndexes[j] = i;
+                    topProbabilities[j] = resultProbabilities[i];
+                    break;
+                }
+            }
+        }
+
+        // Format the result
+        string message = string.Empty;
+        for (int i = 0; i < topResultsCount; i++)
+        {
+            message += $"\n{topProbabilities[i] * 100,4:f0}% : { _labels[topProbabilityLabelIndexes[i]]} ";
+        }
+        var mainLabel = _labels[topProbabilityLabelIndexes[0]].Split(',')[0];
+
+        return new SqueezeNetResult
+        {
+            TopResultsFormatted = message,
+            DominantResultLabel = mainLabel,
+            DominantResultProbability = topProbabilities[0],
+            ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
+        };
+    }
+#endif
 }
