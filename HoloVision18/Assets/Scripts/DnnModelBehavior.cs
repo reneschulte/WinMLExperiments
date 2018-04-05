@@ -20,6 +20,7 @@ public class DnnModelBehavior : MonoBehaviour
         {
             // Get components
             var tts = GetComponent<TextToSpeech>();
+            var user = GetComponent<UserInput>();
 
             // Load model
             _dnnModel = new SqueezeNetModel();
@@ -45,13 +46,22 @@ public class DnnModelBehavior : MonoBehaviour
                             var result = await _dnnModel.EvaluateVideoFrameAsync(videoFrame);
                             if (result.DominantResultProbability > 0)
                             {
-                                // Process results
-                                var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
-                                var speechText = string.Format("This {0} a {1}", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel);
-
-                                // Surface results to UI
+                                // Further process and surface results to UI
                                 UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                                 {
+                                    var dist = (user.HeadPosition - user.GazeHitPoint).magnitude;
+                                    var distMessage = string.Empty;
+                                    if (dist < 1)
+                                    {
+                                        distMessage = string.Format("{0:f0} {1}", dist * 100, "centimeter");
+                                    }
+                                    else
+                                    {
+                                        distMessage = string.Format("{0:f1} {1}", dist, "meter");
+                                    }
+                                    var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
+                                    var speechText = string.Format("This {0} a {1} {2} in front of you", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel, distMessage);
+
                                     StatusBlock.text = labelText;
                                     if (!tts.IsSpeaking())
                                     {
@@ -62,6 +72,7 @@ public class DnnModelBehavior : MonoBehaviour
                         }
                         catch (Exception ex)
                         {
+                            //IsRunning = false;
                             UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                             {
                                 //StatusBlock.text = $"Error loop: {ex.Message}";
