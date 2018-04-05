@@ -564,7 +564,7 @@ PlayerSettings:
   m_MobileRenderingPath: 1
   metroPackageName: HoloVision18
   metroPackageVersion: 1.0.0.0
-  metroCertificatePath: D:\Git\Private\WinMLExperiments\HoloVision18\Assets\WSATestCertificate.pfx
+  metroCertificatePath: Assets\WSATestCertificate.pfx
   metroCertificatePassword: 
   metroCertificateSubject: Schulte Software Development
   metroCertificateIssuer: Schulte Software Development

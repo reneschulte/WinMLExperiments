@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HoloToolkit.Unity;
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -8,6 +9,7 @@ public class DnnModelBehavior : MonoBehaviour
     private MediaCapturer _mediaCapturer;
 
     public TextMesh StatusBlock;
+    public float ProbabilityThreshold = 0.6f;
     public bool IsRunning = false;
 
     async void Start()
@@ -16,6 +18,9 @@ public class DnnModelBehavior : MonoBehaviour
 
         try
         {
+            // Get components
+            var tts = GetComponent<TextToSpeech>();
+
             // Load model
             _dnnModel = new SqueezeNetModel();
             await _dnnModel.LoadModelAsync(false);
@@ -38,8 +43,19 @@ public class DnnModelBehavior : MonoBehaviour
                         try
                         {
                             var result = await _dnnModel.EvaluateVideoFrameAsync(videoFrame);
-                            var message = $"Predominant objects detecting at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
-                            UnityEngine.WSA.Application.InvokeOnAppThread(() => StatusBlock.text = message, false);
+                            if (result.DominantResultProbability > 0)
+                            {
+                                var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
+                                var speechText = string.Format("This {0} a {1}", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel);
+                                UnityEngine.WSA.Application.InvokeOnAppThread(() =>
+                                {
+                                    StatusBlock.text = labelText;
+                                    if (!tts.IsSpeaking())
+                                    {
+                                        tts.StartSpeaking(speechText);
+                                    }
+                                }, false);
+                            }
                         }
                         catch (Exception ex)
                         {
