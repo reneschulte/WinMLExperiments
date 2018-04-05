@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 
 #if ENABLE_WINMD_SUPPORT
 using Windows.Media;
@@ -51,19 +52,44 @@ public class MediaCapturer
             }
 
             // The overloads of CreateFrameReaderAsync with the format arguments will actually make a copy in FrameArrived
-            _frameReader = await _captureManager.CreateFrameReaderAsync(frameSource.Value, subtype, new BitmapSize { Width = width, Height = height });
+            _frameReader = await _captureManager.CreateFrameReaderAsync(frameSource.Value);
             _frameReader.AcquisitionMode = MediaFrameReaderAcquisitionMode.Realtime;
+            _frameReader.FrameArrived += OnFrameArrived;
+            Interlocked.Exchange(ref _isProcessing, 0);
 
             await _frameReader.StartAsync();
         }
     }
 
-    public VideoFrame GetLatestFrame()
+    public event Func<VideoFrame, Task> ProcessFrame;
+    private int _isProcessing;
+
+    private async void OnFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
     {
-        // The overloads of CreateFrameReaderAsync with the format arguments will actually return a copy so we dont'have to worry about creating another copy here
-        var frame = _frameReader.TryAcquireLatestFrame();
-        var videoFrame = frame?.VideoMediaFrame?.GetVideoFrame();
-        return videoFrame;
+        if (ProcessFrame == null)
+        {
+            return;
+        }
+        if (Interlocked.CompareExchange(ref _isProcessing, 1, 0) == 0)
+        {
+            try
+            {
+                using (var frame = sender.TryAcquireLatestFrame())
+                {
+                    using (var videoFrame = frame?.VideoMediaFrame?.GetVideoFrame())
+                    {
+                        if (videoFrame != null)
+                        {
+                            await ProcessFrame(videoFrame);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isProcessing, 0);
+            }
+        }
     }
 #endif
 
@@ -72,6 +98,7 @@ public class MediaCapturer
 #if ENABLE_WINMD_SUPPORT
         if (_captureManager != null && _captureManager.CameraStreamState != CameraStreamState.Shutdown)
         {
+            _frameReader.FrameArrived -= OnFrameArrived;
             await _frameReader.StopAsync();
             _frameReader.Dispose();
             _captureManager.Dispose();
