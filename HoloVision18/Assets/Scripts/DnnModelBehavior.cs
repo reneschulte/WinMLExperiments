@@ -27,12 +27,12 @@ public class DnnModelBehavior : MonoBehaviour
             StatusBlock.text = $"Loaded model. Starting camera...";
 
 #if ENABLE_WINMD_SUPPORT
-            // Configure camera to return frames already sized to fit the model input
+            // Configure camera to return frames fitting the model input size
             _mediaCapturer = new MediaCapturer();
             await _mediaCapturer.StartCapturing(_dnnModel.InputDescription.BitmapPixelFormat, _dnnModel.InputDescription.Width, _dnnModel.InputDescription.Height);
             StatusBlock.text = $"Camera started. Running!";
 
-            // Run loop in separate Task
+            // Run processing loop in separate parallel Task
             IsRunning = true;
             await Task.Run(async () =>
             {
@@ -45,8 +45,11 @@ public class DnnModelBehavior : MonoBehaviour
                             var result = await _dnnModel.EvaluateVideoFrameAsync(videoFrame);
                             if (result.DominantResultProbability > 0)
                             {
+                                // Process results
                                 var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
                                 var speechText = string.Format("This {0} a {1}", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel);
+
+                                // Surface results to UI
                                 UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                                 {
                                     StatusBlock.text = labelText;

@@ -20,9 +20,7 @@ public class MediaCapturer
 
     public async Task StartCapturing(BitmapPixelFormat pixelFormat = BitmapPixelFormat.Bgra8, uint width = 320, uint height = 240)
     {
-        if (_captureManager == null ||
-             _captureManager.CameraStreamState == CameraStreamState.Shutdown ||
-             _captureManager.CameraStreamState == CameraStreamState.NotStreaming)
+        if (_captureManager == null ||  _captureManager.CameraStreamState == CameraStreamState.Shutdown || _captureManager.CameraStreamState == CameraStreamState.NotStreaming)
         {
             if (_captureManager != null)
             {

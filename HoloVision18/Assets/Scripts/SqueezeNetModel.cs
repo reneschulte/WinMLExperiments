@@ -35,7 +35,6 @@ public class SqueezeNetModel
 
     public ImageVariableDescriptorPreview InputDescription => _inputImageDescription;
     public TensorVariableDescriptorPreview OutputDescription => _outputTensorDescription;
-
 #endif // ENABLE_WINMD_SUPPORT
 
     public async Task LoadModelAsync(bool isGpu = false)
@@ -65,10 +64,8 @@ public class SqueezeNetModel
             // Load Model via Unity
             // The WinML LearningModelPreview.LoadModelFromStreamAsync is 'not implemented' so we are using the trick to load via Unity Resource as txt file...
             // Thanks Mike for the hint! https://mtaulty.com/2018/03/29/third-experiment-with-image-classification-on-windows-ml-from-uwp-on-hololens-in-unity/
-
             IStorageFile modelFile = null;
             var fileName = "model.bytes";
-
             try
             {
                 modelFile = await ApplicationData.Current.TemporaryFolder.GetFileAsync(fileName);
@@ -152,7 +149,7 @@ public class SqueezeNetModel
             }
         }
 
-        // Format the result
+        // Format the result and return
         string message = string.Empty;
         for (int i = 0; i < topResultsCount; i++)
         {
