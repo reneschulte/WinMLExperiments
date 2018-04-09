@@ -5,16 +5,18 @@ using UnityEngine.XR.WSA.Input;
 public class UserInput : MonoBehaviour
 {
     private GestureRecognizer _gestureRecognizer;
+    private Transform _headTransform;
 
     public GameObject GazeCursor;
 
-    public Vector3 HeadDirection => Camera.main.transform.forward;
-    public Vector3 HeadPosition => Camera.main.transform.position;
+    public Vector3 HeadDirection => _headTransform.forward;
+    public Vector3 HeadPosition => _headTransform.position;
 
     public Vector3 GazeHitPoint { get; private set; }
 
     void Start()
     {
+        _headTransform = Camera.main.transform;
         _gestureRecognizer = new GestureRecognizer();
         _gestureRecognizer.Tapped += HandTapped;
         _gestureRecognizer.SetRecognizableGestures(GestureSettings.Tap);
@@ -30,7 +32,7 @@ public class UserInput : MonoBehaviour
         if (GazeCursor == null) return;
 
         // Get closest raycast hit 
-        var raycastHits = Physics.RaycastAll(HeadPosition, HeadDirection);
+        var raycastHits = Physics.RaycastAll(_headTransform.position, _headTransform.forward);
         var firstHit = raycastHits.OrderBy(r => r.distance).FirstOrDefault();
 
         // Set cursor to the position

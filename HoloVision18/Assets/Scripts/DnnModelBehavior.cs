@@ -7,9 +7,11 @@ public class DnnModelBehavior : MonoBehaviour
 {
     private SqueezeNetModel _dnnModel;
     private MediaCapturer _mediaCapturer;
+    private string _previousDominantResult;
 
     public TextMesh StatusBlock;
     public float ProbabilityThreshold = 0.6f;
+    public float MovementThresholdCentimeter = 15f;
     public bool IsRunning = false;
 
     async void Start()
@@ -49,6 +51,7 @@ public class DnnModelBehavior : MonoBehaviour
                                 // Further process and surface results to UI
                                 UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                                 {
+                                    // Measure distance between user's head and gaze ray hit point => distance to object
                                     var dist = (user.HeadPosition - user.GazeHitPoint).magnitude;
                                     var distMessage = string.Empty;
                                     if (dist < 1)
@@ -59,14 +62,18 @@ public class DnnModelBehavior : MonoBehaviour
                                     {
                                         distMessage = string.Format("{0:f1} {1}", dist, "meter");
                                     }
+
+                                    // Prepare strings for text and update labels
                                     var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
                                     var speechText = string.Format("This {0} a {1} {2} in front of you", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel, distMessage);
-
                                     StatusBlock.text = labelText;
-                                    if (!tts.IsSpeaking())
+
+                                    // Check if the previous result was the same and only progress further if not to avoid a loop of same audio
+                                    if (!tts.IsSpeaking() && result.DominantResultLabel != _previousDominantResult)
                                     {
                                         tts.StartSpeaking(speechText);
                                     }
+                                    _previousDominantResult = result.DominantResultLabel;
                                 }, false);
                             }
                         }
