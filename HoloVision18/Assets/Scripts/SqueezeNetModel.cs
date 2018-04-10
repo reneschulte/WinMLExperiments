@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Based on WinML SqueezeNet sample from
+// https://github.com/Microsoft/Windows-Machine-Learning
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,6 +17,7 @@ using System.Diagnostics;
 
 public class SqueezeNetModel
 {
+    // Simple class to encapsulate the returned results
     public class SqueezeNetResult
     {
         public string TopResultsFormatted = "No results just yet";
@@ -37,7 +41,7 @@ public class SqueezeNetModel
     public TensorVariableDescriptorPreview OutputDescription => _outputTensorDescription;
 #endif // ENABLE_WINMD_SUPPORT
 
-    public async Task LoadModelAsync(bool isGpu = false)
+    public async Task LoadModelAsync(bool shouldUseGpu = false)
     {
         try
         {
@@ -80,12 +84,13 @@ public class SqueezeNetModel
                 await FileIO.WriteBytesAsync(modelFile, modelResource.bytes);
             }
 
-            // Init model          
+            // Initialize model          
             _model = await LearningModelPreview.LoadModelFromStorageFileAsync(modelFile);
             _model.InferencingOptions.ReclaimMemoryAfterEvaluation = true;
-            _model.InferencingOptions.PreferredDeviceKind = isGpu == true ? LearningModelDeviceKindPreview.LearningDeviceGpu : LearningModelDeviceKindPreview.LearningDeviceCpu;
+            _model.InferencingOptions.PreferredDeviceKind =
+                shouldUseGpu ? LearningModelDeviceKindPreview.LearningDeviceGpu : LearningModelDeviceKindPreview.LearningDeviceCpu;
 
-            // Retrieve model input and output variable descriptions (we already know the model takes an image in and outputs a tensor)
+            // Get model input and output descriptions
             List<ILearningModelVariableDescriptorPreview> inputFeatures = _model.Description.InputFeatures.ToList();
             List<ILearningModelVariableDescriptorPreview> outputFeatures = _model.Description.OutputFeatures.ToList();
 
@@ -108,14 +113,11 @@ public class SqueezeNetModel
     }
 
 #if ENABLE_WINMD_SUPPORT
-   public async Task<SqueezeNetResult> EvaluateVideoFrameAsync(VideoFrame inputFrame, int topResultsCount = 3)
+    public async Task<SqueezeNetResult> EvaluateVideoFrameAsync(VideoFrame inputFrame, int topResultsCount = 3)
     {
-        // Create bindings for the input and output buffer
-        LearningModelBindingPreview binding = new LearningModelBindingPreview(_model as LearningModelPreview);
-
+        // Sometimes on HL RS4 the D3D surface returned is null, so simply skip those frames
         if (inputFrame == null || (inputFrame.Direct3DSurface == null && inputFrame.SoftwareBitmap == null))
         {
-            // Sometimes on HL RS4 the D3D surface returned is null, so simply skip those frames
             return new SqueezeNetResult
             {
                 TopResultsFormatted = "No input frame",
@@ -124,19 +126,22 @@ public class SqueezeNetModel
                 ElapsedMilliseconds = 0
             };
         }
+
+        // Bind the input and output buffer
+        LearningModelBindingPreview binding = new LearningModelBindingPreview(_model as LearningModelPreview);
         binding.Bind(_inputImageDescription.Name, inputFrame);
         binding.Bind(_outputTensorDescription.Name, _outputVariableList);
 
-        // Process the frame with the model
+        // Process the frame and get the results
         var stopwatch = Stopwatch.StartNew();
         LearningModelEvaluationResultPreview results = await _model.EvaluateAsync(binding, "test");
         stopwatch.Stop();
         List<float> resultProbabilities = results.Outputs[_outputTensorDescription.Name] as List<float>;
 
-        // Find the result of the evaluation in the bound output (the top classes detected with the max confidence)
+        // Find and sort the result of the evaluation in the bound output (the top classes detected with the max confidence)
         var topProbabilities = new float[topResultsCount];
         var topProbabilityLabelIndexes = new int[topResultsCount];
-        for (int i = 0; i < resultProbabilities.Count(); i++)
+        for (int i = 0; i < resultProbabilities.Count; i++)
         {
             for (int j = 0; j < topResultsCount; j++)
             {
@@ -149,14 +154,13 @@ public class SqueezeNetModel
             }
         }
 
-        // Format the result and return
+        // Format the result strings and return results
         string message = string.Empty;
         for (int i = 0; i < topResultsCount; i++)
         {
             message += $"\n{topProbabilities[i] * 100,4:f0}% : { _labels[topProbabilityLabelIndexes[i]]} ";
         }
         var mainLabel = _labels[topProbabilityLabelIndexes[0]].Split(',')[0];
-
         return new SqueezeNetResult
         {
             TopResultsFormatted = message,
