@@ -49,7 +49,8 @@ public class MediaCapturer
             }
 
             // The overloads of CreateFrameReaderAsync with the format arguments will actually make a copy in FrameArrived
-            _frameReader = await _captureManager.CreateFrameReaderAsync(frameSource.Value, subtype, new BitmapSize { Width = width, Height = height });
+            BitmapSize outputSize = new BitmapSize { Width = width, Height = height };
+            _frameReader = await _captureManager.CreateFrameReaderAsync(frameSource.Value, subtype, outputSize);
             _frameReader.AcquisitionMode = MediaFrameReaderAcquisitionMode.Realtime;
 
             await _frameReader.StartAsync();
@@ -58,7 +59,7 @@ public class MediaCapturer
 
     public VideoFrame GetLatestFrame()
     {
-        // The overloads of CreateFrameReaderAsync with the format arguments will actually return a copy so we dont'have to worry about creating another copy here
+        // The overloads of CreateFrameReaderAsync with the format arguments will actually return a copy so we don't have to copy again
         var frame = _frameReader.TryAcquireLatestFrame();
         var videoFrame = frame?.VideoMediaFrame?.GetVideoFrame();
         return videoFrame;

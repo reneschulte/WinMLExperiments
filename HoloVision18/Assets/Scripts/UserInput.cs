@@ -1,10 +1,8 @@
 ﻿using System.Linq;
 using UnityEngine;
-using UnityEngine.XR.WSA.Input;
 
 public class UserInput : MonoBehaviour
 {
-    private GestureRecognizer _gestureRecognizer;
     private Transform _headTransform;
 
     public GameObject GazeCursor;
@@ -17,14 +15,6 @@ public class UserInput : MonoBehaviour
     void Start()
     {
         _headTransform = Camera.main.transform;
-        _gestureRecognizer = new GestureRecognizer();
-        _gestureRecognizer.Tapped += HandTapped;
-        _gestureRecognizer.SetRecognizableGestures(GestureSettings.Tap);
-        _gestureRecognizer.StartCapturingGestures();
-    }
-
-    private void HandTapped(TappedEventArgs args)
-    {
     }
 
     void Update()
@@ -35,21 +25,9 @@ public class UserInput : MonoBehaviour
         var raycastHits = Physics.RaycastAll(_headTransform.position, _headTransform.forward);
         var firstHit = raycastHits.OrderBy(r => r.distance).FirstOrDefault();
 
-        // Set cursor to the position
+        // Set cursor to the position and store result
         GazeCursor.transform.position = firstHit.point;
         GazeCursor.transform.forward = firstHit.normal;
         GazeHitPoint = firstHit.point;
-    }
-
-    private void OnDestroy()
-    {
-        if (_gestureRecognizer != null)
-        {
-            if (_gestureRecognizer.IsCapturingGestures())
-            {
-                _gestureRecognizer.StopCapturingGestures();
-            }
-            _gestureRecognizer.Dispose();
-        }
     }
 }

@@ -9,11 +9,12 @@ public class DnnModelBehavior : MonoBehaviour
     private MediaCapturer _mediaCapturer;
     private TextToSpeech _tts;
     private UserInput _user;
-    private String _previousDominantResult;
+
+    private string _previousDominantResult;
+    private bool _isRunning = false;
 
     public TextMesh StatusBlock;
     public float ProbabilityThreshold = 0.6f;
-    public bool IsRunning = false;
 
     async void Start()
     {
@@ -32,14 +33,17 @@ public class DnnModelBehavior : MonoBehaviour
 #if ENABLE_WINMD_SUPPORT
             // Configure camera to return frames fitting the model input size
             _mediaCapturer = new MediaCapturer();
-            await _mediaCapturer.StartCapturing(_dnnModel.InputDescription.BitmapPixelFormat, _dnnModel.InputDescription.Width, _dnnModel.InputDescription.Height);
+            await _mediaCapturer.StartCapturing(
+                _dnnModel.InputDescription.BitmapPixelFormat, 
+                _dnnModel.InputDescription.Width, 
+                _dnnModel.InputDescription.Height);
             StatusBlock.text = $"Camera started. Running!";
 
             // Run processing loop in separate parallel Task
-            IsRunning = true;
+            _isRunning = true;
             await Task.Run(async () =>
             {
-                while (IsRunning)
+                while (_isRunning)
                 {
                     using (var videoFrame = _mediaCapturer.GetLatestFrame())
                     {
@@ -81,8 +85,12 @@ public class DnnModelBehavior : MonoBehaviour
                     }
 
                     // Prepare strings for text and update labels
-                    var labelText = $"Predominant objects detected at {1000f / result.ElapsedMilliseconds,4:f1} fps\n {result.TopResultsFormatted}";
-                    var speechText = string.Format("This {0} a {1} {2} in front of you", result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", result.DominantResultLabel, distMessage);
+                    float fps = 1000f / result.ElapsedMilliseconds;
+                    var labelText = $"Predominant objects detected at {fps,4:f1} fps\n {result.TopResultsFormatted}";
+                    var speechText = string.Format("This {0} a {1} {2} in front of you", 
+                        result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", 
+                        result.DominantResultLabel, 
+                        distMessage);
                     StatusBlock.text = labelText;
 
                     // Check if the previous result was the same and only progress further if not to avoid a loop of same audio
@@ -116,7 +124,7 @@ public class DnnModelBehavior : MonoBehaviour
 
     private async void OnDestroy()
     {
-        IsRunning = false;
+        _isRunning = false;
         if (_mediaCapturer != null)
         {
             await _mediaCapturer.StopCapturing();
