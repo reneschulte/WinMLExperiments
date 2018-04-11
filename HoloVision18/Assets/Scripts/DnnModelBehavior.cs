@@ -117,6 +117,9 @@ public class DnnModelBehavior : MonoBehaviour
     private async void OnDestroy()
     {
         IsRunning = false;
-        await _mediaCapturer.StopCapturing();
+        if (_mediaCapturer != null)
+        {
+            await _mediaCapturer.StopCapturing();
+        }
     }
 }
