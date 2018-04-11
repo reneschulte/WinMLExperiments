@@ -85,8 +85,7 @@ public class DnnModelBehavior : MonoBehaviour
                     }
 
                     // Prepare strings for text and update labels
-                    float fps = 1000f / result.ElapsedMilliseconds;
-                    var labelText = $"Predominant objects detected at {fps,4:f1} fps\n {result.TopResultsFormatted}";
+                    var labelText = $"Predominant objects detected in {result.ElapsedMilliseconds,4:f0}ms\n {result.TopResultsFormatted}";
                     var speechText = string.Format("This {0} a {1} {2} in front of you", 
                         result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", 
                         result.DominantResultLabel, 
