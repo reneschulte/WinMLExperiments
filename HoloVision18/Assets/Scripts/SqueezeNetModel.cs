@@ -134,7 +134,7 @@ public class SqueezeNetModel
 
         // Process the frame and get the results
         var stopwatch = Stopwatch.StartNew();
-        LearningModelEvaluationResultPreview results = await _model.EvaluateAsync(binding, "test");
+        LearningModelEvaluationResultPreview results = await _model.EvaluateAsync(binding, "Squeeze");
         stopwatch.Stop();
         List<float> resultProbabilities = results.Outputs[_outputTensorDescription.Name] as List<float>;
 

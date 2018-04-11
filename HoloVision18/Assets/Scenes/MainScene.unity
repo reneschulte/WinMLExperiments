@@ -338,7 +338,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   StatusBlock: {fileID: 2122114120}
   ProbabilityThreshold: 0.6
-  IsRunning: 0
 --- !u!4 &404633361
 Transform:
   m_ObjectHideFlags: 0
