@@ -10,7 +10,7 @@ public class DnnModelBehavior : MonoBehaviour
     private TextToSpeech _tts;
     private UserInput _user;
 
-    private string _previousDominantResult;
+    private string _speechText;
     private bool _isRunning = false;
 
     public TextMesh StatusBlock;
@@ -23,6 +23,7 @@ public class DnnModelBehavior : MonoBehaviour
             // Get components
             _tts = GetComponent<TextToSpeech>();
             _user = GetComponent<UserInput>();
+            _user.Tapped += SayLastSeenObject;
 
             // Load model
             StatusBlock.text = $"Loading {SqueezeNetModel.ModelFileName} ...";
@@ -60,6 +61,14 @@ public class DnnModelBehavior : MonoBehaviour
         }
     }
 
+    private void SayLastSeenObject()
+    {
+        if (_tts != null && !_tts.IsSpeaking())
+        {
+            _tts.StartSpeaking(_speechText);
+        }
+    }
+
 #if ENABLE_WINMD_SUPPORT
     private async Task EvaluateFrame(Windows.Media.VideoFrame videoFrame)
     {
@@ -86,18 +95,11 @@ public class DnnModelBehavior : MonoBehaviour
 
                     // Prepare strings for text and update labels
                     var labelText = $"Predominant objects detected in {result.ElapsedMilliseconds,4:f0}ms\n {result.TopResultsFormatted}";
-                    var speechText = string.Format("This {0} a {1} {2} in front of you", 
+                    _speechText = string.Format("This {0} a {1} {2} in front of you", 
                         result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", 
                         result.DominantResultLabel, 
                         distMessage);
                     StatusBlock.text = labelText;
-
-                    // Check if the previous result was the same and only progress further if not to avoid a loop of same audio
-                    if (!_tts.IsSpeaking() && result.DominantResultLabel != _previousDominantResult)
-                    {
-                        _tts.StartSpeaking(speechText);
-                        _previousDominantResult = result.DominantResultLabel;
-                    }
                 }, false);
             }
         }

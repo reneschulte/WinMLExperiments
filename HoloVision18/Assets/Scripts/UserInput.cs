@@ -1,9 +1,12 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.XR.WSA.Input;
 
 public class UserInput : MonoBehaviour
 {
     private Transform _headTransform;
+    private GestureRecognizer _gestureRecognizer;
 
     public GameObject GazeCursor;
 
@@ -12,9 +15,18 @@ public class UserInput : MonoBehaviour
 
     public Vector3 GazeHitPoint { get; private set; }
 
+    public event Action Tapped;
+
     void Start()
     {
         _headTransform = Camera.main.transform;
+
+        // Attach gesture handlers
+
+        _gestureRecognizer = new GestureRecognizer();
+        _gestureRecognizer.Tapped += GestureRecognizerOnTapped;
+        _gestureRecognizer.SetRecognizableGestures(GestureSettings.Tap);
+        _gestureRecognizer.StartCapturingGestures();
     }
 
     void Update()
@@ -29,5 +41,22 @@ public class UserInput : MonoBehaviour
         GazeCursor.transform.position = firstHit.point;
         GazeCursor.transform.forward = firstHit.normal;
         GazeHitPoint = firstHit.point;
+    }
+
+    private void GestureRecognizerOnTapped(TappedEventArgs tappedEventArgs)
+    {
+        Tapped?.Invoke();
+    }
+
+    private void OnDestroy()
+    {
+        if (_gestureRecognizer != null)
+        {
+            if (_gestureRecognizer.IsCapturingGestures())
+            {
+                _gestureRecognizer.StopCapturingGestures();
+            }
+            _gestureRecognizer.Dispose();
+        }
     }
 }
