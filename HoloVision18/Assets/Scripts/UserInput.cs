@@ -11,6 +11,7 @@ public class UserInput : MonoBehaviour
     public Vector3 HeadPosition => _headTransform.position;
 
     public Vector3 GazeHitPoint { get; private set; }
+    public float GazeHitDistance { get; private set; }
 
     void Start()
     {
@@ -29,5 +30,6 @@ public class UserInput : MonoBehaviour
         GazeCursor.transform.position = firstHit.point;
         GazeCursor.transform.forward = firstHit.normal;
         GazeHitPoint = firstHit.point;
+        GazeHitDistance = firstHit.distance;
     }
 }

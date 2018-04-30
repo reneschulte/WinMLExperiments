@@ -73,15 +73,14 @@ public class DnnModelBehavior : MonoBehaviour
                 UnityEngine.WSA.Application.InvokeOnAppThread(() =>
                 {
                     // Measure distance between user's head and gaze ray hit point => distance to object
-                    var dist = (_user.HeadPosition - _user.GazeHitPoint).magnitude;
                     var distMessage = string.Empty;
-                    if (dist < 1)
+                    if (_user.GazeHitDistance < 1)
                     {
-                        distMessage = string.Format("{0:f0} {1}", dist * 100, "centimeter");
+                        distMessage = string.Format("{0:f0} {1}", _user.GazeHitDistance * 100, "centimeter");
                     }
                     else
                     {
-                        distMessage = string.Format("{0:f1} {1}", dist, "meter");
+                        distMessage = string.Format("{0:f1} {1}", _user.GazeHitDistance, "meter");
                     }
 
                     // Prepare strings for text and update labels
