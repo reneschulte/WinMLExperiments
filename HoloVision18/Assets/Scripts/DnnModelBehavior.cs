@@ -27,16 +27,15 @@ public class DnnModelBehavior : MonoBehaviour
             // Load model
             StatusBlock.text = $"Loading {SqueezeNetModel.ModelFileName} ...";
             _dnnModel = new SqueezeNetModel();
-            await _dnnModel.LoadModelAsync(false);
+            await _dnnModel.LoadModelAsync(true);
             StatusBlock.text = $"Loaded model. Starting camera...";
 
 #if ENABLE_WINMD_SUPPORT
             // Configure camera to return frames fitting the model input size
             _mediaCapturer = new MediaCapturer();
             await _mediaCapturer.StartCapturing(
-                _dnnModel.InputDescription.BitmapPixelFormat, 
-                _dnnModel.InputDescription.Width, 
-                _dnnModel.InputDescription.Height);
+                _dnnModel.InputWidth, 
+                _dnnModel.InputHeight);
             StatusBlock.text = $"Camera started. Running!";
 
             // Run processing loop in separate parallel Task

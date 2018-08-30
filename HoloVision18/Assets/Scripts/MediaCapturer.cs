@@ -18,7 +18,7 @@ public class MediaCapturer
     private MediaCapture _captureManager;
     private MediaFrameReader _frameReader;
 
-    public async Task StartCapturing(BitmapPixelFormat pixelFormat = BitmapPixelFormat.Bgra8, uint width = 320, uint height = 240)
+    public async Task StartCapturing(uint width = 320, uint height = 240)
     {
         if (_captureManager == null ||  _captureManager.CameraStreamState == CameraStreamState.Shutdown || _captureManager.CameraStreamState == CameraStreamState.NotStreaming)
         {
@@ -43,10 +43,10 @@ public class MediaCapturer
 
             // Convert the pixel formats
             var subtype = MediaEncodingSubtypes.Bgra8;
-            if (pixelFormat != BitmapPixelFormat.Bgra8)
-            {
-                throw new Exception($"Pixelformat {pixelFormat} not supported yet. Add conversion here");
-            }
+            //if (pixelFormat != BitmapPixelFormat.Bgra8)
+            //{
+            //    throw new Exception($"Pixelformat {pixelFormat} not supported yet. Add conversion here");
+            //}
 
             // The overloads of CreateFrameReaderAsync with the format arguments will actually make a copy in FrameArrived
             BitmapSize outputSize = new BitmapSize { Width = width, Height = height };

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 #if ENABLE_WINMD_SUPPORT
-using Windows.AI.MachineLearning.Preview;
+using Windows.AI.MachineLearning;
 using Windows.Storage;
 using Windows.Media;
 using System.Diagnostics;
@@ -33,12 +33,12 @@ public class SqueezeNetModel
     private List<float> _outputVariableList = new List<float>();
 
 #if ENABLE_WINMD_SUPPORT
-    private ImageVariableDescriptorPreview _inputImageDescription;
-    private TensorVariableDescriptorPreview _outputTensorDescription;
-    private LearningModelPreview _model = null;
+    private LearningModel _model = null;
+    private LearningModelSession _session;
+    private TensorFeatureDescriptor _outputDescription;
 
-    public ImageVariableDescriptorPreview InputDescription => _inputImageDescription;
-    public TensorVariableDescriptorPreview OutputDescription => _outputTensorDescription;
+    public uint InputWidth { get; private set; }
+    public uint InputHeight { get; private set; }
 #endif // ENABLE_WINMD_SUPPORT
 
     public async Task LoadModelAsync(bool shouldUseGpu = false)
@@ -85,22 +85,43 @@ public class SqueezeNetModel
             }
 
             // Initialize model          
-            _model = await LearningModelPreview.LoadModelFromStorageFileAsync(modelFile);
-            _model.InferencingOptions.ReclaimMemoryAfterEvaluation = true;
-            _model.InferencingOptions.PreferredDeviceKind =
-                shouldUseGpu ? LearningModelDeviceKindPreview.LearningDeviceGpu : LearningModelDeviceKindPreview.LearningDeviceCpu;
+            _model = await LearningModel.LoadFromStorageFileAsync(modelFile);
+            var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
+            _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
+
+            // Does not work as this stream is not cloneable ???
+            //// Load from Unity Resources and initialize model   
+            //var modelResource = Resources.Load(ModelFileName) as TextAsset;
+            //using (var modelStream = new MemoryStream(modelResource.bytes))
+            //{
+            //    var randomAccessStream = RandomAccessStreamReference.CreateFromStream(modelStream.AsRandomAccessStream());
+            //    _model = await LearningModel.LoadFromStreamAsync(randomAccessStream);
+            //    var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
+            //    _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
+            //}
 
             // Get model input and output descriptions
-            List<ILearningModelVariableDescriptorPreview> inputFeatures = _model.Description.InputFeatures.ToList();
-            List<ILearningModelVariableDescriptorPreview> outputFeatures = _model.Description.OutputFeatures.ToList();
+            var inputImageDescription =
+                _model.InputFeatures.FirstOrDefault(feature => feature.Kind == LearningModelFeatureKind.Image)
+                as ImageFeatureDescriptor;
+            // Check if input is passed as image if not try to interpret it as generic tensor
+            if (inputImageDescription != null)
+            {
+                InputWidth = inputImageDescription.Width;
+                InputHeight = inputImageDescription.Height;
+            }
+            else
+            {
+                var inputTensorDescription =
+                    _model.InputFeatures.FirstOrDefault(feature => feature.Kind == LearningModelFeatureKind.Tensor)
+                    as TensorFeatureDescriptor;
+                InputWidth = (uint)inputTensorDescription.Shape[3];
+                InputHeight = (uint)inputTensorDescription.Shape[2];
+            }
 
-            _inputImageDescription =
-                inputFeatures.FirstOrDefault(feature => feature.ModelFeatureKind == LearningModelFeatureKindPreview.Image)
-                as ImageVariableDescriptorPreview;
-
-            _outputTensorDescription =
-                outputFeatures.FirstOrDefault(feature => feature.ModelFeatureKind == LearningModelFeatureKindPreview.Tensor)
-                as TensorVariableDescriptorPreview;
+            _outputDescription =
+                _model.OutputFeatures.FirstOrDefault(feature => feature.Kind == LearningModelFeatureKind.Tensor)
+                as TensorFeatureDescriptor;
 #endif
         }
         catch
@@ -127,16 +148,17 @@ public class SqueezeNetModel
             };
         }
 
-        // Bind the input and output buffer
-        LearningModelBindingPreview binding = new LearningModelBindingPreview(_model as LearningModelPreview);
-        binding.Bind(_inputImageDescription.Name, inputFrame);
-        binding.Bind(_outputTensorDescription.Name, _outputVariableList);
+        // Bind the input
+        var binding = new LearningModelBinding(_session);
+        var imageTensor = ImageFeatureValue.CreateFromVideoFrame(inputFrame);
+        binding.Bind("data_0", imageTensor);
 
         // Process the frame and get the results
         var stopwatch = Stopwatch.StartNew();
-        LearningModelEvaluationResultPreview results = await _model.EvaluateAsync(binding, "Squeeze");
+        var results = await _session.EvaluateAsync(binding, stopwatch.ElapsedMilliseconds.ToString());
         stopwatch.Stop();
-        List<float> resultProbabilities = results.Outputs[_outputTensorDescription.Name] as List<float>;
+        var resultTensor = results.Outputs[_outputDescription.Name] as TensorFloat;
+        var resultProbabilities = resultTensor.GetAsVectorView();
 
         // Find and sort the result of the evaluation in the bound output (the top classes detected with the max confidence)
         var topProbabilities = new float[topResultsCount];
