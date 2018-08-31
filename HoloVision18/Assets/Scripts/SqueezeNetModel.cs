@@ -11,6 +11,7 @@ using UnityEngine;
 #if ENABLE_WINMD_SUPPORT
 using Windows.AI.MachineLearning;
 using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.Media;
 using System.Diagnostics;
 #endif // ENABLE_WINMD_SUPPORT
@@ -65,40 +66,19 @@ public class SqueezeNetModel
 
 #if ENABLE_WINMD_SUPPORT
 
-            // Load Model via Unity
-            // The WinML LearningModelPreview.LoadModelFromStreamAsync is 'not implemented' so we are using the trick to load via Unity Resource as txt file...
-            // Thanks Mike for the hint! https://mtaulty.com/2018/03/29/third-experiment-with-image-classification-on-windows-ml-from-uwp-on-hololens-in-unity/
-            IStorageFile modelFile = null;
-            var fileName = "model.bytes";
-            try
+            // Load from Unity Resources via awkward UWP streams and initialize model   
+            using (var modelStream = new InMemoryRandomAccessStream())
             {
-                modelFile = await ApplicationData.Current.TemporaryFolder.GetFileAsync(fileName);
-            }
-            catch (FileNotFoundException)
-            {
-            }
-            if (modelFile == null)
-            {
+                var dataWriter = new DataWriter(modelStream);
                 var modelResource = Resources.Load(ModelFileName) as TextAsset;
-                modelFile = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(fileName);
-                await FileIO.WriteBytesAsync(modelFile, modelResource.bytes);
+                dataWriter.WriteBytes(modelResource.bytes);
+                await dataWriter.StoreAsync();
+                var randomAccessStream = RandomAccessStreamReference.CreateFromStream(modelStream);
+
+                _model = await LearningModel.LoadFromStreamAsync(randomAccessStream);
+                var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
+                _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
             }
-
-            // Initialize model          
-            _model = await LearningModel.LoadFromStorageFileAsync(modelFile);
-            var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
-            _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
-
-            // Does not work as this stream is not cloneable ???
-            //// Load from Unity Resources and initialize model   
-            //var modelResource = Resources.Load(ModelFileName) as TextAsset;
-            //using (var modelStream = new MemoryStream(modelResource.bytes))
-            //{
-            //    var randomAccessStream = RandomAccessStreamReference.CreateFromStream(modelStream.AsRandomAccessStream());
-            //    _model = await LearningModel.LoadFromStreamAsync(randomAccessStream);
-            //    var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
-            //    _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
-            //}
 
             // Get model input and output descriptions
             var inputImageDescription =
