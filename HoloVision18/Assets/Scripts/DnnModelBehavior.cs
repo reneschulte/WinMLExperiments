@@ -27,7 +27,7 @@ public class DnnModelBehavior : MonoBehaviour
             // Load model
             StatusBlock.text = $"Loading {SqueezeNetModel.ModelFileName} ...";
             _dnnModel = new SqueezeNetModel();
-            await _dnnModel.LoadModelAsync(true);
+            await _dnnModel.LoadModelAsync(false);
             StatusBlock.text = $"Loaded model. Starting camera...";
 
 #if ENABLE_WINMD_SUPPORT
