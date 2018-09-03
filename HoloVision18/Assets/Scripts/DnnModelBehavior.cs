@@ -29,7 +29,7 @@ public class DnnModelBehavior : MonoBehaviour
             // Load model
             StatusBlock.text = $"Loading {SqueezeNetModel.ModelFileName} ...";
             _dnnModel = new SqueezeNetModel();
-            await _dnnModel.LoadModelAsync(_shouldUseGpu);
+            await _dnnModel.LoadModelAsync(ShouldUseGpu);
             StatusBlock.text = $"Loaded model. Starting camera...";
 
 #if ENABLE_WINMD_SUPPORT
@@ -85,7 +85,7 @@ public class DnnModelBehavior : MonoBehaviour
                     }
 
                     // Prepare strings for text and update labels
-                    var deviceKind = _shouldUseGpu ? "GPU" : "CPU";
+                    var deviceKind = ShouldUseGpu ? "GPU" : "CPU";
                     var labelText = $"Predominant objects detected in {result.ElapsedMilliseconds,3:f0}ms on {deviceKind}\n {result.TopResultsFormatted}";
                     var speechText = string.Format("This {0} a {1} {2} in front of you", 
                         result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", 
