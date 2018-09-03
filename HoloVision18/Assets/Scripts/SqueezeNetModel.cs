@@ -76,7 +76,7 @@ public class SqueezeNetModel
                 var randomAccessStream = RandomAccessStreamReference.CreateFromStream(modelStream);
 
                 _model = await LearningModel.LoadFromStreamAsync(randomAccessStream);
-                var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectX : LearningModelDeviceKind.Cpu;
+                var deviceKind = shouldUseGpu ? LearningModelDeviceKind.DirectXHighPerformance : LearningModelDeviceKind.Cpu;
                 _session = new LearningModelSession(_model, new LearningModelDevice(deviceKind));
             }
 

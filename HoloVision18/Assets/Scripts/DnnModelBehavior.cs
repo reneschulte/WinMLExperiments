@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class DnnModelBehavior : MonoBehaviour
 {
+    private const bool ShouldUseGpu = false;
+    
     private SqueezeNetModel _dnnModel;
     private MediaCapturer _mediaCapturer;
     private TextToSpeech _tts;
@@ -27,7 +29,7 @@ public class DnnModelBehavior : MonoBehaviour
             // Load model
             StatusBlock.text = $"Loading {SqueezeNetModel.ModelFileName} ...";
             _dnnModel = new SqueezeNetModel();
-            await _dnnModel.LoadModelAsync(false);
+            await _dnnModel.LoadModelAsync(_shouldUseGpu);
             StatusBlock.text = $"Loaded model. Starting camera...";
 
 #if ENABLE_WINMD_SUPPORT
@@ -83,7 +85,8 @@ public class DnnModelBehavior : MonoBehaviour
                     }
 
                     // Prepare strings for text and update labels
-                    var labelText = $"Predominant objects detected in {result.ElapsedMilliseconds,4:f0}ms\n {result.TopResultsFormatted}";
+                    var deviceKind = _shouldUseGpu ? "GPU" : "CPU";
+                    var labelText = $"Predominant objects detected in {result.ElapsedMilliseconds,3:f0}ms on {deviceKind}\n {result.TopResultsFormatted}";
                     var speechText = string.Format("This {0} a {1} {2} in front of you", 
                         result.DominantResultProbability > ProbabilityThreshold ? "is likely" : "might be", 
                         result.DominantResultLabel, 
