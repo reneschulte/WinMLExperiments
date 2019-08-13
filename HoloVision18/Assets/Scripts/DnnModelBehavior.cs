@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class DnnModelBehavior : MonoBehaviour
 {
-    private const bool ShouldUseGpu = true;
+    private const bool ShouldUseGpu = false;
 
     private SqueezeNetModel _dnnModel;
     private MediaCapturer _mediaCapturer;
