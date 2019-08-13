@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEngine;
 
 #if ENABLE_WINMD_SUPPORT
 using Windows.Media;
 using Windows.Media.Capture;
+using Windows.Storage;
+using Windows.Storage.Streams;
+using Windows.Storage.Pickers;
 using Windows.Media.Capture.Frames;
 using Windows.Media.MediaProperties;
 using Windows.Media.Devices;
@@ -14,13 +18,16 @@ using Windows.Devices.Enumeration;
 
 public class MediaCapturer
 {
+    public bool IsCapturing { get; set; }
+
 #if ENABLE_WINMD_SUPPORT
     private MediaCapture _captureManager;
     private MediaFrameReader _frameReader;
+    private VideoFrame _loadedVideoFrame;
 
     public async Task StartCapturing(uint width = 320, uint height = 240)
     {
-        if (_captureManager == null ||  _captureManager.CameraStreamState == CameraStreamState.Shutdown || _captureManager.CameraStreamState == CameraStreamState.NotStreaming)
+        if (_captureManager == null || _captureManager.CameraStreamState == CameraStreamState.Shutdown || _captureManager.CameraStreamState == CameraStreamState.NotStreaming)
         {
             if (_captureManager != null)
             {
@@ -54,6 +61,7 @@ public class MediaCapturer
             _frameReader.AcquisitionMode = MediaFrameReaderAcquisitionMode.Realtime;
 
             await _frameReader.StartAsync();
+            IsCapturing = true;
         }
     }
 
@@ -63,6 +71,32 @@ public class MediaCapturer
         var frame = _frameReader.TryAcquireLatestFrame();
         var videoFrame = frame?.VideoMediaFrame?.GetVideoFrame();
         return videoFrame;
+    }
+
+    public async Task<VideoFrame> GetTestFrame()
+    {
+        if (_loadedVideoFrame == null)
+        {
+            using (var resourceStream = new InMemoryRandomAccessStream())
+            {
+                var dataWriter = new DataWriter(resourceStream);
+                var frameResource = Resources.Load("keyboard.jpg") as TextAsset;
+                dataWriter.WriteBytes(frameResource.bytes);
+                await dataWriter.StoreAsync();
+                resourceStream.Seek(0);
+               
+                // Create the decoder from the stream 
+                var decoder = await BitmapDecoder.CreateAsync(resourceStream);
+
+                // Get the SoftwareBitmap representation of the file in BGRA8 format
+                var softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+                softwareBitmap = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+                // Encapsulate the image within a VideoFrame to be bound and evaluated
+                _loadedVideoFrame = VideoFrame.CreateWithSoftwareBitmap(softwareBitmap);
+            }
+        }
+        return _loadedVideoFrame;
     }
 #endif
 
@@ -76,6 +110,7 @@ public class MediaCapturer
             _captureManager.Dispose();
             _captureManager = null;
         }
+        IsCapturing = false;
 #endif
     }
 }

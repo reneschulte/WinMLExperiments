@@ -6,7 +6,7 @@ using UnityEngine;
 public class DnnModelBehavior : MonoBehaviour
 {
     private const bool ShouldUseGpu = true;
-    
+
     private SqueezeNetModel _dnnModel;
     private MediaCapturer _mediaCapturer;
     private TextToSpeech _tts;
@@ -34,11 +34,24 @@ public class DnnModelBehavior : MonoBehaviour
 
 #if ENABLE_WINMD_SUPPORT
             // Configure camera to return frames fitting the model input size
-            _mediaCapturer = new MediaCapturer();
-            await _mediaCapturer.StartCapturing(
-                _dnnModel.InputWidth, 
-                _dnnModel.InputHeight);
-            StatusBlock.text = $"Camera started. Running!";
+            try
+            {
+                _mediaCapturer = new MediaCapturer();
+                await _mediaCapturer.StartCapturing(
+                    _dnnModel.InputWidth,
+                    _dnnModel.InputHeight);
+                StatusBlock.text = $"Camera started. Running!";
+            }
+            catch (Exception ex)
+            {
+                StatusBlock.text = $"Failed to start camera: {ex.Message}. Using loaded/picked image.";
+
+            }
+            // Load fallback frame if there's no camera like when testing with the emulator
+            if (!_mediaCapturer.IsCapturing)
+            {
+                var loadedFrame = await _mediaCapturer.GetTestFrame();
+            }
 
             // Run processing loop in separate parallel Task
             _isRunning = true;
@@ -46,9 +59,18 @@ public class DnnModelBehavior : MonoBehaviour
             {
                 while (_isRunning)
                 {
-                    using (var videoFrame = _mediaCapturer.GetLatestFrame())
+                    if (_mediaCapturer.IsCapturing)
                     {
-                        await EvaluateFrame(videoFrame);
+                        using (var videoFrame = _mediaCapturer.GetLatestFrame())
+                        {
+                            await EvaluateFrame(videoFrame);
+                        }
+                    }
+                    // Use fallback if there's no camera like when testing with the emulator
+                    else
+                    {
+                        var loadedFrame = await _mediaCapturer.GetTestFrame();
+                        await EvaluateFrame(loadedFrame);
                     }
                 }
             });
