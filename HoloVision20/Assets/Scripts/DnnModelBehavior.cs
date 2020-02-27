@@ -61,7 +61,7 @@ public class DnnModelBehavior : MonoBehaviour
                 {
                     if (_mediaCapturer.IsCapturing)
                     {
-                        using (var videoFrame = _mediaCapturer.GetLatestFrame())
+                        using (var videoFrame = await _mediaCapturer.GetLatestFrame())
                         {
                             await EvaluateFrame(videoFrame);
                         }

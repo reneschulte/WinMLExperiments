@@ -65,11 +65,20 @@ public class MediaCapturer
         }
     }
 
-    public VideoFrame GetLatestFrame()
+    public async Task<VideoFrame> GetLatestFrame()
     {
         // The overloads of CreateFrameReaderAsync with the format arguments will actually return a copy so we don't have to copy again
         var frame = _frameReader.TryAcquireLatestFrame();
         var videoFrame = frame?.VideoMediaFrame?.GetVideoFrame();
+
+        // TODO: Remove workaround with if below and just return videoFrame as it is
+        // Workaround for WinML bug: "It seems you’ve ran into a bug in Winml affecting binding of D3D-backed video frames from certain cameras.  This stems from an assumption in Winml that the DX surface is a shareable texture."
+        if (videoFrame != null && videoFrame.Direct3DSurface != null)
+        {
+            var swBitmap = await SoftwareBitmap.CreateCopyFromSurfaceAsync(videoFrame.Direct3DSurface);
+            videoFrame = VideoFrame.CreateWithSoftwareBitmap(swBitmap);
+        }
+        
         return videoFrame;
     }
 
