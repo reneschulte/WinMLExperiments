@@ -292,9 +292,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 346281817}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 247442469, guid: f7b54ff4a43d4fcf81b4538b678e0bcc, type: 3}
+  m_Script: {fileID: 11500000, guid: b0701dcbd499e3248b1ea0a49bd0c93d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_SurfaceParent: {fileID: 0}
+  m_FreezeUpdates: 0
+  m_VolumeType: 1
+  m_SphereRadius: 2
+  m_HalfBoxExtents: {x: 4, y: 4, z: 4}
+  m_LodType: 1
+  m_NumUpdatesBeforeRemoval: 10
+  m_SecondsBetweenUpdates: 1
+  m_Layer: 0
+  m_Material: {fileID: 0}
+  m_EnableCollisions: 1
 --- !u!4 &346281820
 Transform:
   m_ObjectHideFlags: 0
